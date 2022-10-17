@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(heatchamber_control)
+project(zdxxmp_controller)
 
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
@@ -38,6 +38,9 @@ endif()
 add_executable(test_rtu src/test_rtu.cpp ${sdk_common})
 target_link_libraries(test_rtu ${PROJECT_NAME} )
 
+add_executable(test_interface src/test_interface.cpp ${sdk_common})
+target_link_libraries(test_interface ${PROJECT_NAME} )
+
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
@@ -52,6 +55,7 @@ add_library(${PROJECT_NAME} SHARED
    src/modbus-rtu.c  
    src/modbus-tcp.c  
    src/zdxxmp.c
+   src/zdxxmp_controller.cpp
 )
 
 #############
@@ -70,6 +74,10 @@ install(TARGETS ${PROJECT_NAME}
 )
 
 install(TARGETS test_rtu
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(TARGETS test_interface
   DESTINATION lib/${PROJECT_NAME}
 )
 

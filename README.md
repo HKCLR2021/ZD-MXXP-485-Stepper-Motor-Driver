@@ -49,7 +49,7 @@ To build, G++ (and Gcc) is required. Makefile so just run terminal command  ```m
 
 ### As a ROS2 package
 
-for some reason the colcon package for this stepper motor driver was named `heatchamber_control`
+the colcon package for this stepper motor driver was named `zdxxmp_controller`
 
 assume your code is checked out at 
 `~/your/colcon_ws/src/ZD-MXXP-485-Stepper-Motor-Driver`
@@ -57,5 +57,5 @@ assume your code is checked out at
 then:
 ```
 cd ~/your/colcon_ws
-colcon build --packages-up-to heatchamber_control --cmake-args '-DCMAKE_BUILD_TYPE=Debug' --symlink-install
+colcon build --packages-up-to zdxxmp_controller --cmake-args '-DCMAKE_BUILD_TYPE=Debug' --symlink-install
 ```
