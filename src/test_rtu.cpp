@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
     }
 
     printf("\n Homing...\n");
-    m_home(mb, 1);
+    m_home(mb, 2);
 
     int program_flag = 1;
     while (program_flag == 1)
