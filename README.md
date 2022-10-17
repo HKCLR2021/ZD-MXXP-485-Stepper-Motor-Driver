@@ -44,5 +44,18 @@ The core modbus libraries are forked from [libmodbus](https://github.com/stephan
 3. To include this in your own projects, all dependencies are included in src folder. 
 
 ## Build
+### With make
 To build, G++ (and Gcc) is required. Makefile so just run terminal command  ```make``` in ```./ZD-MXXP-485-Stepper-Motor-Driver/src```
 
+### As a ROS2 package
+
+for some reason the colcon package for this stepper motor driver was named `heatchamber_control`
+
+assume your code is checked out at 
+`~/your/colcon_ws/src/ZD-MXXP-485-Stepper-Motor-Driver`
+
+then:
+```
+cd ~/your/colcon_ws
+colcon build --packages-up-to heatchamber_control --cmake-args '-DCMAKE_BUILD_TYPE=Debug' --symlink-install
+```
