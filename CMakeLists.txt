@@ -17,6 +17,7 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(Threads REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
@@ -45,7 +46,7 @@ target_link_libraries(test_interface ${PROJECT_NAME} )
 ## Your package locations should be listed before other locations
 include_directories(
  include
- src
+ src 
 )
 
 ## Declare a C++ library
@@ -57,6 +58,8 @@ add_library(${PROJECT_NAME} SHARED
    src/zdxxmp.c
    src/zdxxmp_controller.cpp
 )
+
+target_link_libraries(${PROJECT_NAME} PRIVATE Threads::Threads)
 
 #############
 ## Install ##
@@ -79,6 +82,10 @@ install(TARGETS test_rtu
 
 install(TARGETS test_interface
   DESTINATION lib/${PROJECT_NAME}
+)
+
+install(DIRECTORY include/
+  DESTINATION include
 )
 
 ament_package()

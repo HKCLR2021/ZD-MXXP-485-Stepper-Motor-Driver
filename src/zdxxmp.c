@@ -128,7 +128,7 @@ int change_address(modbus_t *ctx, int old_device_addr, int new_device_addr){
     return ret;
 }
 
-uint32_t read_value(modbus_t *ctx, int device_addr, int reg_addr){
+int read_value(modbus_t *ctx, int device_addr, int reg_addr){
     uint16_t table[2] = {0,0};
     uint32_t value;
     int ret, nb;

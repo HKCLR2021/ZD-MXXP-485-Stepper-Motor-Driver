@@ -3,7 +3,7 @@
 
 int main(int argc, char *argv[])
 {
-    ZDXXMPController heatChamberController;
+    ZDXXMPController heatChamberController(false);
 
     heatChamberController.init("/dev/ttyUSB1", {2});
 

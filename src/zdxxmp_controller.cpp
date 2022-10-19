@@ -1,12 +1,26 @@
 #include "zdxxmp_controller/zdxxmp_controller.hpp"
-#include "zdxxmp.c"
 #include <thread>
+#include <future>
 #include <chrono>
 #include <algorithm>
 
+extern "C"{
+    #include "zdxxmp.h"
+}
+
+ZDXXMPController::ZDXXMPController(bool sim_mode) : sim_mode_(sim_mode){    
+}
 
 bool ZDXXMPController::init(std::string port, std::vector<int> device_addresses){
     isInitialized_ = false;
+
+    if (sim_mode_) {
+        for (auto device_addr: device_addresses){
+            fake_state_[device_addr] = State::OPEN;
+        }
+        isInitialized_ = true;
+        return true;
+    }
 
     // modbus_new_rtu(const char *device, int baud, char parity, int data_bit, int stop_bit);
     mb = modbus_new_rtu(port.c_str(), 9600, 'N', 8, 1);
@@ -33,10 +47,42 @@ bool ZDXXMPController::init(std::string port, std::vector<int> device_addresses)
     }
 
     for (auto device_addr: device_addresses){
-        int ret = stop(mb,device_addr);
+        int ret = _stop(device_addr);
         if (ret==-1){
-            printf("==WARN== device with address %d not found in port %s\n", device_addr, port.c_str() );
+            printf("==ERROR== device with address %d not found in port %s\n", device_addr, port.c_str() );
+            return false;
         }
+    }    
+
+    isInitialized_ = true;
+
+    // home then open all heatchambers in parrallel
+    auto init_task = [&](int device_addr) -> bool {
+        bool ok;
+
+        ok = home(device_addr);
+        if (!ok) return false;
+
+        ok = open(device_addr);
+        if (!ok) return false;
+
+        return true;
+    };
+
+    std::vector<std::future<bool>> init_results;    
+    for (auto device_addr: device_addresses){
+        init_results.push_back( std::async(std::launch::async, init_task, device_addr) );
+    }
+
+    bool allOK = true;
+    for (unsigned int i=0;i<init_results.size();++i){
+        bool ok = init_results[i].get();
+        if (!ok) printf("==ERROR== device with address %d failed homing and init\n", device_addresses[i]);
+        allOK &= ok;
+    }
+    if (!allOK) {
+        isInitialized_ = false;
+        return false;
     }
 
     isInitialized_ = true;
@@ -46,10 +92,15 @@ bool ZDXXMPController::init(std::string port, std::vector<int> device_addresses)
 bool ZDXXMPController::home(int device_addr){
     if (!isInitialized_) return false;
 
+    if (sim_mode_) {
+        fake_state_[device_addr] = State::CLOSE;
+        return true;
+    }
+
     int ret_status;
 
     // move fast to near home
-    ret_status = move_backwards(mb, device_addr, open_size);
+    ret_status = _move_backwards(device_addr, open_size);
     if (ret_status==-1) {
         printf("==ERROR== no reply from device with address %d\n", device_addr);
         return false;
@@ -58,15 +109,15 @@ bool ZDXXMPController::home(int device_addr){
 
     // move back a bit till limit switch is not pressed
     while (ret_status==STATE_DOWN_BUTTON_PRESSED){
-        ret_status = move_forwards(mb, device_addr, int(open_size*0.05));
+        ret_status = _move_forwards(device_addr, int(open_size*0.05));
         ret_status = wait(device_addr, 1.0);
     }
 
-    ret_status = homing(mb, device_addr);
+    ret_status = _homing(device_addr);
     
     ret_status = wait(device_addr, 10.0);
 
-    stop(mb, device_addr);
+    _stop(device_addr);
 
     return ret_status==STATE_IDLE;
 }
@@ -74,15 +125,20 @@ bool ZDXXMPController::home(int device_addr){
 bool ZDXXMPController::open(int device_addr){
     if (!isInitialized_) return false;
 
-    int ret_status = move_forwards(mb, device_addr, open_size);
+    if (sim_mode_) {
+        fake_state_[device_addr] = State::OPEN;
+        return true;
+    }
+
+    int ret_status = _move_forwards(device_addr, open_size);
     if (ret_status==-1) {
         printf("==ERROR== no reply from device with address %d\n", device_addr);
         return false;
     }
 
-    uint32_t ret = wait(device_addr, 8.0, {STATE_IDLE, STATE_UP_BUTTON_PRESSED});
+    wait(device_addr, 8.0, {STATE_IDLE, STATE_UP_BUTTON_PRESSED});
 
-    stop(mb, device_addr);
+    _stop(device_addr);
 
     return getState(device_addr) == State::OPEN;
 }
@@ -90,8 +146,12 @@ bool ZDXXMPController::open(int device_addr){
 bool ZDXXMPController::close(int device_addr){
     if (!isInitialized_) return false;
 
-    int ret_status;
-    move_backwards(mb, device_addr, open_size);
+    if (sim_mode_) {
+        fake_state_[device_addr] = State::CLOSE;
+        return true;
+    }
+
+    int ret_status = _move_backwards(device_addr, open_size);
     if (ret_status==-1) {
         printf("==ERROR== no reply from device with address %d\n", device_addr);
         return false;
@@ -101,28 +161,28 @@ bool ZDXXMPController::close(int device_addr){
     wait(device_addr, 8.0, {STATE_IDLE, STATE_DOWN_BUTTON_PRESSED});
 
     // release motor lock to let the heat chamber fall by gravity to the motherboard, to close the last few mm gap
-    unlock_when_stopped(mb, device_addr);    
+    _unlock_when_stopped(device_addr);    
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
     // reapply motor lock
-    lock_when_stopped(mb, device_addr);
+    _lock_when_stopped(device_addr);
 
-    stop(mb, device_addr);
+    _stop(device_addr);
 
     return getState(device_addr) == State::CLOSE;
 }
 
-uint32_t ZDXXMPController::wait(int device_addr, double timeout_seconds){    
+int ZDXXMPController::wait(int device_addr, double timeout_seconds){    
     return wait(device_addr, timeout_seconds, {STATE_IDLE});
 }
 
-uint32_t ZDXXMPController::wait(int device_addr, double timeout_seconds, std::vector<uint32_t> target_states){
+int ZDXXMPController::wait(int device_addr, double timeout_seconds, std::vector<uint32_t> target_states){
     double dt_ms = 100;
 
     int N = int(timeout_seconds*1000/dt_ms);
     if (N<=0) N=1;
 
-    uint32_t ret;
+    int ret;
 
     for (int i=0;i<N;i++){
         ret = getLowLevelState(device_addr);
@@ -137,7 +197,11 @@ uint32_t ZDXXMPController::wait(int device_addr, double timeout_seconds, std::ve
 ZDXXMPController::State ZDXXMPController::getState(int device_addr){
     if (!isInitialized_) return State::UNKNOWN;
 
-    uint32_t ret;
+    if (sim_mode_) {        
+        return fake_state_[device_addr];
+    }
+
+    int ret;
 
     ret = getLowLevelState(device_addr);
     if (ret==-1) {        
@@ -173,13 +237,64 @@ ZDXXMPController::State ZDXXMPController::getState(int device_addr){
     }
 }
 
-uint32_t ZDXXMPController::getLowLevelState(int device_addr){
-    uint32_t ret = read_value(mb, device_addr, REG_CURRENT_STATE);    
+int ZDXXMPController::getLowLevelState(int device_addr){
+    int ret = _read_value(device_addr, REG_CURRENT_STATE);    
     print_state_message(ret);
     return ret;
 }
 
-uint32_t ZDXXMPController::getPosition(int device_addr){
-    uint32_t ret = read_value(mb, device_addr, REG_CURRENT_POS_H);
+int ZDXXMPController::getPosition(int device_addr){
+    int ret = _read_value(device_addr, REG_CURRENT_POS_H);
     return ret;
+}
+
+// wrapper around similarly named funcs in zdxxmp.h
+int ZDXXMPController::_read_value(int device_addr, int reg_addr){
+    std::lock_guard<std::mutex> lock(bus_mutex);
+    return read_value(mb, device_addr, reg_addr);
+}
+
+int ZDXXMPController::_homing(int device_addr){
+    std::lock_guard<std::mutex> lock(bus_mutex);
+    return homing(mb, device_addr);
+}
+
+int ZDXXMPController::_goto_position(int device_addr, uint32_t position){
+    std::lock_guard<std::mutex> lock(bus_mutex);
+    return goto_position(mb, device_addr, position);
+}
+
+int ZDXXMPController::_move_forwards(int device_addr, uint32_t steps){
+    std::lock_guard<std::mutex> lock(bus_mutex);
+    return move_forwards(mb, device_addr, steps);
+}
+
+int ZDXXMPController::_move_backwards(int device_addr, uint32_t steps){
+    std::lock_guard<std::mutex> lock(bus_mutex);
+    return move_backwards(mb, device_addr, steps);
+}
+
+int ZDXXMPController::_stop(int device_addr){
+    std::lock_guard<std::mutex> lock(bus_mutex);
+    return stop(mb, device_addr);
+}
+
+int ZDXXMPController::_lock_when_stopped(int device_addr){
+    std::lock_guard<std::mutex> lock(bus_mutex);
+    return lock_when_stopped(mb, device_addr);
+}
+
+int ZDXXMPController::_unlock_when_stopped(int device_addr){
+    std::lock_guard<std::mutex> lock(bus_mutex);
+    return unlock_when_stopped(mb, device_addr);
+}
+
+int ZDXXMPController::_flash_parameters(int device_addr){
+    std::lock_guard<std::mutex> lock(bus_mutex);
+    return flash_parameters(mb, device_addr);
+}
+
+int ZDXXMPController::_change_address(int old_device_addr, int new_device_addr){
+    std::lock_guard<std::mutex> lock(bus_mutex);
+    return change_address(mb, old_device_addr, new_device_addr);
 }

@@ -72,7 +72,7 @@
 #define STATE_DOWN_BUTTON_PRESSED   0x70 // 运行过程撞到 down 开关
 
 
-uint32_t read_value(modbus_t *ctx, int device_addr, int reg_addr);
+int read_value(modbus_t *ctx, int device_addr, int reg_addr);
 float read_fvalue(modbus_t *ctx, int device_addr, int reg_addr);
 
 int write_value(modbus_t *ctx, int device_addr, int reg_addr, uint32_t value);
@@ -106,3 +106,5 @@ int lock_when_stopped(modbus_t *ctx, int device_addr);
 int unlock_when_stopped(modbus_t *ctx, int device_addr);
 int flash_parameters(modbus_t *ctx, int device_addr);
 int change_address(modbus_t *ctx, int old_device_addr, int new_device_addr);
+
+void print_state_message(uint16_t state);
