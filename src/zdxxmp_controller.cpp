@@ -14,6 +14,8 @@ ZDXXMPController::ZDXXMPController(bool sim_mode) : sim_mode_(sim_mode){
 bool ZDXXMPController::init(std::string port, std::vector<int> device_addresses){
     isInitialized_ = false;
 
+    device_addresses_ = device_addresses;
+
     if (sim_mode_) {
         for (auto device_addr: device_addresses){
             fake_state_[device_addr] = State::OPEN;
@@ -55,7 +57,10 @@ bool ZDXXMPController::init(std::string port, std::vector<int> device_addresses)
     }    
 
     isInitialized_ = true;
+    return true;
+}
 
+bool ZDXXMPController::homeAll(){
     // home then open all heatchambers in parrallel
     auto init_task = [&](int device_addr) -> bool {
         bool ok;
@@ -70,22 +75,18 @@ bool ZDXXMPController::init(std::string port, std::vector<int> device_addresses)
     };
 
     std::vector<std::future<bool>> init_results;    
-    for (auto device_addr: device_addresses){
+    for (auto device_addr: device_addresses_){
         init_results.push_back( std::async(std::launch::async, init_task, device_addr) );
     }
 
     bool allOK = true;
     for (unsigned int i=0;i<init_results.size();++i){
         bool ok = init_results[i].get();
-        if (!ok) printf("==ERROR== device with address %d failed homing and init\n", device_addresses[i]);
+        if (!ok) printf("==ERROR== device with address %d failed homing and init\n", device_addresses_[i]);
         allOK &= ok;
     }
-    if (!allOK) {
-        isInitialized_ = false;
-        return false;
-    }
-
-    isInitialized_ = true;
+    if (!allOK) return false;
+    
     return true;
 }
 

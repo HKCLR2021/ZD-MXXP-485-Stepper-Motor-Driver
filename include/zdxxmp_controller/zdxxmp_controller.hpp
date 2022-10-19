@@ -21,6 +21,7 @@ class ZDXXMPController{
         bool init(std::string port, std::vector<int> device_addresses);
         bool isInitialized() { return isInitialized_;}
         
+        bool homeAll();
         bool home(int device_addr);
         bool open(int device_addr);
         bool close(int device_addr);
@@ -54,6 +55,7 @@ class ZDXXMPController{
         bool isInitialized_ = false;
 
         std::mutex bus_mutex;
+        std::vector<int> device_addresses_;
 
         bool sim_mode_ = true;
         std::map<int, State> fake_state_;
