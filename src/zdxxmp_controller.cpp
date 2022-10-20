@@ -11,6 +11,12 @@ extern "C"{
 ZDXXMPController::ZDXXMPController(bool sim_mode) : sim_mode_(sim_mode){    
 }
 
+ZDXXMPController::~ZDXXMPController(){
+    for (auto device_addr: device_addresses_){
+        _unlock_when_stopped(device_addr);        
+    }    
+}
+
 bool ZDXXMPController::init(std::string port, std::vector<int> device_addresses){
     isInitialized_ = false;
 
@@ -108,15 +114,19 @@ bool ZDXXMPController::home(int device_addr){
     }
     ret_status = wait(device_addr, 8.0, {STATE_IDLE, STATE_DOWN_BUTTON_PRESSED});
 
-    // move back a bit till limit switch is not pressed
-    while (ret_status==STATE_DOWN_BUTTON_PRESSED){
-        ret_status = _move_forwards(device_addr, int(open_size*0.05));
-        ret_status = wait(device_addr, 1.0);
-    }
+    for (int trial=0; trial<3; ++trial){
+        // whatever go wrong, move back a bit till limit switch is not pressed, then retry homing
+        while (ret_status==STATE_DOWN_BUTTON_PRESSED || ret_status==STATE_ERROR_RETURNING){
+            ret_status = _move_forwards(device_addr, int(open_size*0.05));
+            ret_status = wait(device_addr, 1.0);
+        }
 
-    ret_status = _homing(device_addr);
-    
-    ret_status = wait(device_addr, 10.0);
+        // go home
+        ret_status = _homing(device_addr);    
+        ret_status = wait(device_addr, 10.0, {STATE_IDLE,STATE_ERROR_RETURNING} );
+
+        if (ret_status==STATE_IDLE) break;
+    }
 
     _stop(device_addr);
 

@@ -17,6 +17,7 @@ class ZDXXMPController{
         };
 
         ZDXXMPController(bool sim_mode=false);
+        ~ZDXXMPController();
         
         bool init(std::string port, std::vector<int> device_addresses);
         bool isInitialized() { return isInitialized_;}
