@@ -12,7 +12,7 @@ int m_close(modbus_t *ctx, int device_addr){
     move_backwards(ctx, device_addr, open_size);
     sleep(8);
     unlock_when_stopped(ctx, device_addr);
-    sleep(0.5);
+    sleep(1);
     lock_when_stopped(ctx, device_addr);
     return 1;
 }
@@ -82,8 +82,8 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    printf("\n Homing...\n");
-    m_home(mb, 2);
+    // printf("\n Homing...\n");
+    // m_home(mb, 2);
 
     int program_flag = 1;
     while (program_flag == 1)
@@ -104,6 +104,11 @@ int main(int argc, char *argv[])
         case '2':
             printf("Changing destination of commands sent to 2");
             device_addr=2;
+            break;
+
+        case '3':
+            printf("Changing destination of commands sent to 3");
+            device_addr=3;
             break;
 
         case 'o':
