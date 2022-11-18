@@ -131,6 +131,8 @@ bool ZDXXMPController::open(int device_addr){
         return true;
     }
 
+    if (getState(device_addr)==State::OPEN) return true;
+
     int ret_status = _move_forwards(device_addr, open_size);
     if (ret_status==-1) {
         printf("==ERROR== no reply from device with address %d\n", device_addr);
@@ -151,6 +153,8 @@ bool ZDXXMPController::close(int device_addr){
         fake_state_[device_addr] = State::CLOSE;
         return true;
     }
+
+    if (getState(device_addr)==State::CLOSE) return true;
 
     int ret_status = _move_backwards(device_addr, open_size);
     if (ret_status==-1) {
@@ -204,6 +208,12 @@ ZDXXMPController::State ZDXXMPController::getState(int device_addr){
 
     int ret;
 
+    // guess state from button
+    auto buttonState = getButtonState(device_addr);
+    if (buttonState[1]) return State::OPEN;
+    if (buttonState[2]) return State::CLOSE;
+
+    // guess state from last/current motion cmd's status
     ret = getLowLevelState(device_addr);
     if (ret==-1) {        
         printf("==ERROR== no reply from device with address %d\n", device_addr);
@@ -226,6 +236,7 @@ ZDXXMPController::State ZDXXMPController::getState(int device_addr){
         return State::MOVING;
     }
 
+    // guess state from encoder value
     ret = getPosition(device_addr);
     if ( ret<int(open_size*0.05) ){
         return State::CLOSE;
@@ -239,9 +250,21 @@ ZDXXMPController::State ZDXXMPController::getState(int device_addr){
 }
 
 int ZDXXMPController::getLowLevelState(int device_addr){
-    int ret = _read_value(device_addr, REG_CURRENT_STATE);    
+    int ret = _read_value(device_addr, REG_CURRENT_STATE);
+    if (ret>=0) ret = ret & 0x00FF; // 0xFF00 is button state bytes(?) 0x00FF is motion state bytes
     print_state_message(ret);
     return ret;
+}
+
+// vector of len=3: state of button home up down
+std::vector<uint8_t> ZDXXMPController::getButtonState(int device_addr){
+    std::lock_guard<std::mutex> lock(bus_mutex);
+    uint8_t * ret = read_button_states(mb, device_addr);
+    auto output = std::vector<uint8_t>(3);
+    for (std::size_t i=0; i<3; ++i){
+        output[i] = ret[i];
+    }
+    return output;
 }
 
 int ZDXXMPController::getPosition(int device_addr){

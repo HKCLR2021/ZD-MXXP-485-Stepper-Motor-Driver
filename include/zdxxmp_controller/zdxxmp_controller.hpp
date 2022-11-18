@@ -27,8 +27,17 @@ class ZDXXMPController{
         bool close(int device_addr);
         State getState(int device_addr);
         int getLowLevelState(int device_addr);
+        std::vector<uint8_t> getButtonState(int device_addr);
         int getPosition(int device_addr);
     
+        int _goto_position (int device_addr, uint32_t position);
+        int _move_forwards (int device_addr, uint32_t steps);
+        int _move_backwards(int device_addr, uint32_t steps);
+        int _stop          (int device_addr);
+
+        int _lock_when_stopped  (int device_addr);
+        int _unlock_when_stopped(int device_addr);
+        
     private:
         int wait(int device_addr, double timeout_seconds);
         int wait(int device_addr, double timeout_seconds, std::vector<uint32_t> target_states);
@@ -37,13 +46,7 @@ class ZDXXMPController{
         int _read_value(int device_addr, int reg_addr);
 
         int _homing        (int device_addr);
-        int _goto_position (int device_addr, uint32_t position);
-        int _move_forwards (int device_addr, uint32_t steps);
-        int _move_backwards(int device_addr, uint32_t steps);
-        int _stop          (int device_addr);
-
-        int _lock_when_stopped  (int device_addr);
-        int _unlock_when_stopped(int device_addr);
+        
         int _flash_parameters   (int device_addr);
         int _change_address     (int old_device_addr, int new_device_addr);
 
