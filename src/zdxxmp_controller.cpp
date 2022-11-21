@@ -60,6 +60,8 @@ bool ZDXXMPController::init(std::string port, std::vector<int> device_addresses)
             printf("==ERROR== device with address %d not found in port %s\n", device_addr, port.c_str() );
             return false;
         }
+        // take over control i.e. cannot move by hand now
+        _lock_when_stopped(device_addr);
     }    
 
     isInitialized_ = true;
