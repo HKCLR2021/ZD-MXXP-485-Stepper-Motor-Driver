@@ -8,13 +8,15 @@ extern "C"{
     #include "zdxxmp.h"
 }
 
-ZDXXMPController::ZDXXMPController(bool sim_mode) : sim_mode_(sim_mode){    
+ZDXXMPController::ZDXXMPController(bool sim_mode) : sim_mode_(sim_mode){
 }
 
 ZDXXMPController::~ZDXXMPController(){
-    for (auto device_addr: device_addresses_){
-        _unlock_when_stopped(device_addr);        
-    }    
+    if (!sim_mode_){
+        for (auto device_addr: device_addresses_){
+            _unlock_when_stopped(device_addr);
+        }
+    }
 }
 
 bool ZDXXMPController::init(std::string port, std::vector<int> device_addresses){
@@ -50,7 +52,7 @@ bool ZDXXMPController::init(std::string port, std::vector<int> device_addresses)
         modbus_close(mb);
         modbus_free(mb);
         printf("connect failed: %s\n", modbus_strerror(errno));
-        printf("You may need to start terminal as root or use sudo"); 
+        printf("You may need to start terminal as root or use sudo");
         return false;
     }
 
@@ -62,7 +64,7 @@ bool ZDXXMPController::init(std::string port, std::vector<int> device_addresses)
         }
         // take over control i.e. cannot move by hand now
         _lock_when_stopped(device_addr);
-    }    
+    }
 
     isInitialized_ = true;
     return true;
@@ -82,7 +84,7 @@ bool ZDXXMPController::homeAll(){
         return true;
     };
 
-    std::vector<std::future<bool>> init_results;    
+    std::vector<std::future<bool>> init_results;
     for (auto device_addr: device_addresses_){
         init_results.push_back( std::async(std::launch::async, init_task, device_addr) );
     }
@@ -94,7 +96,7 @@ bool ZDXXMPController::homeAll(){
         allOK &= ok;
     }
     if (!allOK) return false;
-    
+
     return true;
 }
 
@@ -124,7 +126,7 @@ bool ZDXXMPController::home(int device_addr){
         }
 
         // go home
-        ret_status = _homing(device_addr);    
+        ret_status = _homing(device_addr);
         ret_status = wait(device_addr, 10.0, {STATE_IDLE,STATE_ERROR_RETURNING} );
 
         if (ret_status==STATE_IDLE) break;
@@ -178,7 +180,7 @@ bool ZDXXMPController::close(int device_addr){
     wait(device_addr, 8.0, {STATE_IDLE, STATE_DOWN_BUTTON_PRESSED});
 
     // release motor lock to let the heat chamber fall by gravity to the motherboard, to close the last few mm gap
-    _unlock_when_stopped(device_addr);    
+    _unlock_when_stopped(device_addr);
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
     // reapply motor lock
@@ -189,7 +191,7 @@ bool ZDXXMPController::close(int device_addr){
     return getState(device_addr) == State::CLOSE;
 }
 
-int ZDXXMPController::wait(int device_addr, double timeout_seconds){    
+int ZDXXMPController::wait(int device_addr, double timeout_seconds){
     return wait(device_addr, timeout_seconds, {STATE_IDLE});
 }
 
@@ -214,7 +216,7 @@ int ZDXXMPController::wait(int device_addr, double timeout_seconds, std::vector<
 ZDXXMPController::State ZDXXMPController::getState(int device_addr){
     if (!isInitialized_) return State::UNKNOWN;
 
-    if (sim_mode_) {        
+    if (sim_mode_) {
         return fake_state_[device_addr];
     }
 
@@ -227,7 +229,7 @@ ZDXXMPController::State ZDXXMPController::getState(int device_addr){
 
     // guess state from last/current motion cmd's status
     ret = getLowLevelState(device_addr);
-    if (ret==-1) {        
+    if (ret==-1) {
         printf("==ERROR== no reply from device with address %d\n", device_addr);
         return State::UNKNOWN;
     }
@@ -240,7 +242,7 @@ ZDXXMPController::State ZDXXMPController::getState(int device_addr){
     }
     else if (ret==STATE_DOWN_BUTTON_PRESSED){
         return State::CLOSE;
-    }    
+    }
     else if (ret == STATE_ACCEL   ||
              ret == STATE_CONST   ||
              ret == STATE_DECCEL  ||
