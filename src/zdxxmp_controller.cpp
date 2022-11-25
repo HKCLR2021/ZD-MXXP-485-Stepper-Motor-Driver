@@ -12,7 +12,7 @@ ZDXXMPController::ZDXXMPController(bool sim_mode) : sim_mode_(sim_mode){
 }
 
 ZDXXMPController::~ZDXXMPController(){
-    if (!sim_mode_){
+    if (!sim_mode_ && isInitialized_){
         for (auto device_addr: device_addresses_){
             _unlock_when_stopped(device_addr);
         }
