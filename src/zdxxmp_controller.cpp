@@ -116,7 +116,12 @@ bool ZDXXMPController::home(int device_addr){
         printf("==ERROR== no reply from device with address %d\n", device_addr);
         return false;
     }
-    ret_status = wait(device_addr, 8.0, {STATE_IDLE, STATE_DOWN_BUTTON_PRESSED});
+    
+    ret_status = wait(device_addr, 10.0, {STATE_IDLE, STATE_DOWN_BUTTON_PRESSED});
+    if (getState(device_addr) != State::CLOSE){
+        printf("==ERROR== during init, seems something is blocking the close of device with address %d\n", device_addr);
+        return false;
+    }
 
     for (int trial=0; trial<3; ++trial){
         // whatever go wrong, move back a bit till limit switch is not pressed, then retry homing
@@ -153,7 +158,7 @@ bool ZDXXMPController::open(int device_addr){
         return false;
     }
 
-    wait(device_addr, 8.0, {STATE_IDLE, STATE_UP_BUTTON_PRESSED});
+    wait(device_addr, 10.0, {STATE_IDLE, STATE_UP_BUTTON_PRESSED});
 
     _stop(device_addr);
 
@@ -177,7 +182,7 @@ bool ZDXXMPController::close(int device_addr){
     }
 
     // wait for close motion complete
-    wait(device_addr, 8.0, {STATE_IDLE, STATE_DOWN_BUTTON_PRESSED});
+    wait(device_addr, 10.0, {STATE_IDLE, STATE_DOWN_BUTTON_PRESSED});
 
     // release motor lock to let the heat chamber fall by gravity to the motherboard, to close the last few mm gap
     _unlock_when_stopped(device_addr);
@@ -226,6 +231,7 @@ ZDXXMPController::State ZDXXMPController::getState(int device_addr){
     auto buttonState = getButtonState(device_addr);
     if (buttonState[1]) return State::OPEN;
     if (buttonState[2]) return State::CLOSE;
+    if (!buttonState[1] && !buttonState[2]) return State::HALFOPEN;
 
     // guess state from last/current motion cmd's status
     ret = getLowLevelState(device_addr);
