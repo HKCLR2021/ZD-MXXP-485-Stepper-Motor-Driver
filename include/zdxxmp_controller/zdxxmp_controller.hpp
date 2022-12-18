@@ -22,6 +22,7 @@ class ZDXXMPController{
         bool init(std::string port, std::vector<int> device_addresses);
         bool isInitialized() { return isInitialized_;}
         
+        bool homeMultiple(std::vector<int> device_addresses);
         bool homeAll();
         bool home(int device_addr);
         bool open(int device_addr);
