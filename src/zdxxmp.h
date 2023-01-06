@@ -15,8 +15,8 @@
 
 // Default port name
 // You can specify when launching program
-// eg. ./test_rtu /dev/ttyUSB1
-#define PORT_NAME "/dev/ttyUSB0"
+// eg. ./test_rtu /dev/USBHeatChamber
+#define PORT_NAME "/dev/USBRomoGripper"
 
 
 // NEMA full revolution number of steps

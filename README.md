@@ -40,7 +40,7 @@ The core modbus libraries are forked from [libmodbus](https://github.com/stephan
 
 ## Usage and demo
 1. Clone repo
-2. Run test_rtu with command ```./test_rtu```. This is a demo program. You can specify COM port with ```./test_rtu /dev/ttyUSB1```. You can change default value in ```zdxxmp.h```. 
+2. Run test_rtu with command ```./test_rtu```. This is a demo program. You can specify COM port with ```./test_rtu /dev/USBHeatChamber```. You can change default value in ```zdxxmp.h```. 
 3. To include this in your own projects, all dependencies are included in src folder. 
 
 ## Build

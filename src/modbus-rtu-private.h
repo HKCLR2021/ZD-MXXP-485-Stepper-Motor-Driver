@@ -43,7 +43,7 @@ struct win32_ser {
 #endif /* _WIN32 */
 
 typedef struct _modbus_rtu {
-    /* Device: "/dev/ttyS0", "/dev/ttyUSB0" or "/dev/tty.USA19*" on Mac OS X. */
+    /* Device: "/dev/ttyS0", "/dev/USBRomoGripper" or "/dev/tty.USA19*" on Mac OS X. */
     char *device;
     /* Bauds: 9600, 19200, 57600, 115200, etc */
     int baud;

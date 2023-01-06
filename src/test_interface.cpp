@@ -5,7 +5,7 @@ int main(int argc, char *argv[])
 {
     ZDXXMPController heatChamberController(false);
 
-    heatChamberController.init("/dev/ttyUSB1", {1,2,3});
+    heatChamberController.init("/dev/USBHeatChamber", {1,2,3});
 
     if (!heatChamberController.isInitialized()){
         printf("heatChamberController init failed\n");
